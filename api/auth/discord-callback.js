@@ -33,7 +33,7 @@ export default async (req, res) => {
                 client_secret: 'fPN8wxX2YVxekygoUPDySHzYPrSyEqO0',
                 grant_type: 'authorization_code',
                 code,
-                redirect_uri: `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/auth/discord-callback`
+                redirect_uri: 'https://syxo-gilt.vercel.app/api/auth/discord-callback'
             })
         });
 
@@ -42,7 +42,7 @@ export default async (req, res) => {
         
         if (!tokenData.access_token) {
             console.error('No access token in response');
-            return res.status(400).json({ error: 'Failed to get access token' });
+            return res.status(400).json({ error: 'Failed to get access token', details: tokenData });
         }
         
         const accessToken = tokenData.access_token;
@@ -90,8 +90,24 @@ export default async (req, res) => {
                 username: discordUser.username
             })).toString('base64');
 
-            console.log('Redirecting to dashboard with token');
-            res.redirect(`/dashboard?token=${token}`);
+            console.log('Successfully authenticated user:', discordUser.username);
+            
+            // Return HTML that redirects to dashboard with token
+            res.setHeader('Content-Type', 'text/html');
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Redirecting...</title>
+                </head>
+                <body>
+                    <script>
+                        localStorage.setItem('token', '${token}');
+                        window.location.href = '/dashboard';
+                    </script>
+                </body>
+                </html>
+            `);
         } finally {
             connection.release();
         }
