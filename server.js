@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 // Configuration
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || 'http://localhost:3000/api/discord/callback';
+const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || 'https://syxo-p6tdfc27w-gh25166-8004s-projects.vercel.app/api/discord/callback';
 
 // In-memory database (replace with real DB later)
 const profiles = {};
