@@ -536,36 +536,11 @@
         }
 
         async function loadUserData() {
-            authToken = getAuthToken();
-            
-            if (!authToken) {
-                window.location.href = '/login.html';
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/auth/me', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                    },
-                });
-                
-                if (!response.ok) {
-                    localStorage.removeItem('auth_token');
-                    window.location.href = '/login.html';
-                    return;
-                }
-
-                const user = await response.json();
-                document.getElementById('username').textContent = user.username || 'Usuário';
-                document.getElementById('userAvatar').src = user.avatar || 'https://via.placeholder.com/40';
-                
-                loadUserSlugs();
-            } catch (error) {
-                console.error('Error:', error);
-                localStorage.removeItem('auth_token');
-                window.location.href = '/login.html';
-            }
+            // TODO: Adicionar autenticação aqui quando estiver pronto
+            // Por enquanto, carregando dados de teste para visualizar a dashboard
+            document.getElementById('username').textContent = 'Usuário Teste';
+            document.getElementById('userAvatar').src = 'https://via.placeholder.com/40';
+            loadUserSlugs();
         }
 
         async function loadUserSlugs() {
