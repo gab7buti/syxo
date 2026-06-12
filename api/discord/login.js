@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 const DISCORD_CLIENT_ID = '1514231972686200942';
 const REDIRECT_URI = 'https://syxo-gilt.vercel.app/api/discord/callback';
