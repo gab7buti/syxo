@@ -8,9 +8,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static('public'));
 
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const REDIRECT_URI = 'https://syxo-p6tdfc27w-gh25166-8004s-projects.vercel.app/api/discord/callback';
+// Hardcoded Discord credentials
+const DISCORD_CLIENT_ID = '1514231972686200942';
+const DISCORD_CLIENT_SECRET = 'fPN8wxX2YVxekygoUPDySHzYPrSyEqO0';
+const REDIRECT_URI = 'https://syxo-gilt.vercel.app/api/discord/callback';
 
 // In-memory storage for demo
 const users = {};
@@ -34,6 +35,8 @@ app.get('/api/discord/callback', async (req, res) => {
   }
 
   try {
+    console.log('Exchanging code for token...');
+    
     // Exchange code for token
     const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', {
       client_id: DISCORD_CLIENT_ID,
@@ -41,8 +44,13 @@ app.get('/api/discord/callback', async (req, res) => {
       grant_type: 'authorization_code',
       code,
       redirect_uri: REDIRECT_URI,
+    }, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      }
     });
 
+    console.log('Token received, fetching user...');
     const { access_token } = tokenResponse.data;
 
     // Get user info
@@ -52,6 +60,8 @@ app.get('/api/discord/callback', async (req, res) => {
 
     const user = userResponse.data;
     const userId = user.id;
+
+    console.log('User authenticated:', userId);
 
     // Store user
     users[userId] = {
