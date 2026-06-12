@@ -23,8 +23,11 @@ app.use(session({
 // Discord OAuth endpoints
 app.get('/api/discord/login', (req, res) => {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  const redirectUri = 'https://syxo-p6tdfc27w-gh25166-8004s-projects.vercel.app/api/discord/callback';
+  // Use the request origin to build the redirect URI
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/discord/callback`;
   const scope = 'identify email';
+  
+  console.log(`🔐 Login initiated. Redirect URI: ${redirectUri}`);
   
   const authUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}`;
   res.redirect(authUrl);
@@ -40,13 +43,16 @@ app.get('/api/discord/callback', async (req, res) => {
   try {
     console.log('🔄 Exchanging code for token...');
     
+    // Use the request origin to build the redirect URI
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/discord/callback`;
+    
     // Exchange code for token
     const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', {
       client_id: process.env.DISCORD_CLIENT_ID,
       client_secret: process.env.DISCORD_CLIENT_SECRET,
       grant_type: 'authorization_code',
       code,
-      redirect_uri: 'https://syxo-p6tdfc27w-gh25166-8004s-projects.vercel.app/api/discord/callback'
+      redirect_uri: redirectUri
     }, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
