@@ -754,12 +754,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <a href="https://syxo.lol" target="_blank" class="footer">
-        <span class="footer-icon">✨</span>
-        <span>made with syxo</span>
-    </a>
-
     <!-- Modals -->
     <div class="modal" id="perfilModal">
         <div class="modal-content">
@@ -846,10 +840,19 @@
             <form>
                 <div class="form-group">
                     <label class="form-label">Novo Slug</label>
-                    <input type="text" class="form-input" placeholder="Digite um novo slug (ex: /s, /f)">
+                    <input type="text" class="form-input" id="slugInput" placeholder="Digite um novo slug (ex: s, f, unchxky)">
+                    <small style="color: rgba(255, 255, 255, 0.5); margin-top: 5px; display: block;">Seu perfil será acessível em: /[slug]</small>
                 </div>
-                <button type="button" class="save-btn" onclick="addSlug()">Adicionar Slug</button>
+                <div class="form-group">
+                    <label class="form-label">Bio (opcional)</label>
+                    <textarea class="form-textarea" id="slugBio" placeholder="Escreva algo sobre você..."></textarea>
+                </div>
+                <button type="button" class="save-btn" onclick="addSlug()">Criar Slug</button>
             </form>
+            <div id="slugsList" style="margin-top: 30px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px;">
+                <h4 style="margin-bottom: 15px;">Seus Slugs</h4>
+                <div id="slugsListContent" style="font-size: 14px; color: rgba(255, 255, 255, 0.6);">Carregando...</div>
+            </div>
         </div>
     </div>
 
@@ -971,9 +974,62 @@
             closeModal('links');
         }
 
-        function addSlug() {
-            alert('Slug adicionado!');
-            closeModal('slugs');
+        async function addSlug() {
+            const slug = document.getElementById('slugInput').value.trim();
+            const bio = document.getElementById('slugBio').value.trim();
+
+            if (!slug) {
+                alert('Por favor, digite um slug!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile/create-slug', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        slug: slug,
+                        bio: bio,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`Slug criado com sucesso! Acesse: /${slug}`);
+                    document.getElementById('slugInput').value = '';
+                    document.getElementById('slugBio').value = '';
+                    loadUserSlugs();
+                } else {
+                    alert('Erro: ' + (data.error || 'Não foi possível criar o slug'));
+                }
+            } catch (error) {
+                console.error('Error creating slug:', error);
+                alert('Erro ao criar slug');
+            }
+        }
+
+        async function loadUserSlugs() {
+            try {
+                const response = await fetch('/api/profile/my-slugs');
+                const data = await response.json();
+
+                const slugsListContent = document.getElementById('slugsListContent');
+                if (data.slugs && data.slugs.length > 0) {
+                    slugsListContent.innerHTML = data.slugs.map(s => `
+                        <div style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; margin-bottom: 10px;">
+                            <div style="font-weight: 600; color: #667eea;">/${s.slug}</div>
+                            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.5); margin-top: 5px;">${s.bio || 'Sem bio'}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    slugsListContent.innerHTML = '<div style="color: rgba(255, 255, 255, 0.5);">Você ainda não criou nenhum slug</div>';
+                }
+            } catch (error) {
+                console.error('Error loading slugs:', error);
+            }
         }
 
         function logout() {
@@ -983,7 +1039,17 @@
         }
 
         // Initialize on page load
-        window.addEventListener('load', checkAuth);
+        window.addEventListener('load', () => {
+            checkAuth();
+            // Load slugs when modal is opened
+            const originalOpenModal = window.openModal;
+            window.openModal = function(modalName) {
+                if (modalName === 'slugs') {
+                    loadUserSlugs();
+                }
+                originalOpenModal(modalName);
+            };
+        });
     </script>
 </body>
 </html>
