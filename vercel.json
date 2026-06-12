@@ -16,11 +16,11 @@
       "dest": "/api/$1.js"
     },
     {
-      "src": "/dashboard",
+      "src": "/dashboard/?$",
       "dest": "/public/dashboard-simple.html"
     },
     {
-      "src": "/login",
+      "src": "/login/?$",
       "dest": "/public/login.html"
     },
     {
