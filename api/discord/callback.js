@@ -1,10 +1,11 @@
 import axios from 'axios';
-import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import mysql from 'mysql2/promise';
 
 const DISCORD_CLIENT_ID = '1514231972686200942';
 const DISCORD_CLIENT_SECRET = 'fPN8wxX2YVxekygoUPDySHzYPrSyEqO0';
 const REDIRECT_URI = 'https://syxo-gilt.vercel.app/api/discord/callback';
+const JWT_SECRET = 'syxo-secret-key-2024';
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -28,7 +29,7 @@ export default async function handler(req, res) {
 
   if (!code) {
     console.log('No code provided');
-    return res.redirect(302, '/?error=no_code');
+    return res.redirect(302, '/login.html?error=no_code');
   }
 
   let connection;
@@ -90,31 +91,24 @@ export default async function handler(req, res) {
       );
     }
 
-    // Create session
-    const sessionId = crypto.randomBytes(16).toString('hex');
-    const expiresAt = new Date(Date.now() + 86400000); // 24 hours
-
-    console.log('Creating session:', sessionId);
-    await connection.execute(
-      'INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
-      [sessionId, userId, expiresAt]
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: userId,
+        username: user.username,
+        avatar: user.avatar,
+        email: user.email,
+      },
+      JWT_SECRET,
+      { expiresIn: '30d' }
     );
 
-    // Set cookies with proper flags for Vercel
-    const cookieOptions = [
-      `session_id=${sessionId}; HttpOnly; Max-Age=86400; Path=/; SameSite=Lax`,
-      `user_id=${userId}; Max-Age=86400; Path=/; SameSite=Lax`,
-    ];
-
-    console.log('Setting cookies:', cookieOptions);
-    res.setHeader('Set-Cookie', cookieOptions);
-
-    // Redirect to dashboard
-    console.log('Redirecting to dashboard');
-    res.redirect(302, '/dashboard');
+    console.log('JWT token created, redirecting to dashboard');
+    // Redirect to dashboard with token in URL
+    res.redirect(302, `/dashboard?token=${encodeURIComponent(token)}`);
   } catch (error) {
     console.error('OAuth error:', error.response?.data || error.message);
-    res.redirect(302, '/?error=oauth_failed');
+    res.redirect(302, '/login.html?error=oauth_failed');
   } finally {
     if (connection) {
       connection.release();

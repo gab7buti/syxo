@@ -1,4 +1,7 @@
+import jwt from 'jsonwebtoken';
 import mysql from 'mysql2/promise';
+
+const JWT_SECRET = 'syxo-secret-key-2024';
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -20,31 +23,23 @@ export default async function handler(req, res) {
 
   let connection;
   try {
-    // Get cookies
-    const cookies = parseCookies(req.headers.cookie || '');
-    const userId = cookies.user_id;
-    const sessionId = cookies.session_id;
-
-    console.log('Auth check - userId:', userId, 'sessionId:', sessionId, 'cookies:', req.headers.cookie);
-
-    if (!userId || !sessionId) {
-      console.log('Missing userId or sessionId');
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No authorization header');
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    const token = authHeader.substring(7);
+    console.log('Verifying token...');
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    console.log('Token verified for user:', userId);
+
     // Get database connection
     connection = await pool.getConnection();
-
-    // Check if session is valid
-    const [sessions] = await connection.execute(
-      'SELECT * FROM sessions WHERE id = ? AND user_id = ? AND expires_at > NOW()',
-      [sessionId, userId]
-    );
-
-    if (sessions.length === 0) {
-      console.log('Session not found or expired');
-      return res.status(401).json({ error: 'Session expired or invalid' });
-    }
 
     // Get user info
     const [users] = await connection.execute(
@@ -53,7 +48,7 @@ export default async function handler(req, res) {
     );
 
     if (users.length === 0) {
-      console.log('User not found');
+      console.log('User not found in database');
       return res.status(401).json({ error: 'User not found' });
     }
 
@@ -67,25 +62,11 @@ export default async function handler(req, res) {
       email: user.email,
     });
   } catch (error) {
-    console.error('Auth check error:', error.message, error.code);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    console.error('Auth check error:', error.message);
+    res.status(401).json({ error: 'Invalid or expired token' });
   } finally {
     if (connection) {
       connection.release();
     }
   }
-}
-
-function parseCookies(cookieString) {
-  const cookies = {};
-  if (!cookieString) return cookies;
-  
-  cookieString.split(';').forEach(cookie => {
-    const [name, value] = cookie.trim().split('=');
-    if (name && value) {
-      cookies[name] = decodeURIComponent(value);
-    }
-  });
-  
-  return cookies;
 }

@@ -1,4 +1,7 @@
 import mysql from 'mysql2/promise';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = 'syxo-secret-key-2024';
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -26,13 +29,15 @@ export default async function handler(req, res) {
 async function createSlug(req, res) {
   let connection;
   try {
-    // Get cookies
-    const cookies = parseCookies(req.headers.cookie || '');
-    const userId = cookies.user_id;
-
-    if (!userId) {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
+
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
 
     const { slug, bio, backgroundUrl } = req.body;
 

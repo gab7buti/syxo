@@ -529,19 +529,47 @@
     </div>
 
     <script>
+        let authToken = null;
+
+        // Get token from URL or localStorage
+        function getAuthToken() {
+            const params = new URLSearchParams(window.location.search);
+            const urlToken = params.get('token');
+            
+            if (urlToken) {
+                localStorage.setItem('auth_token', urlToken);
+                // Remove token from URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return urlToken;
+            }
+            
+            return localStorage.getItem('auth_token');
+        }
+
         // Load user data on page load
         async function loadUserData() {
             try {
-                console.log('Loading user data...');
+                authToken = getAuthToken();
+                
+                if (!authToken) {
+                    console.log('No token found, redirecting to login');
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                console.log('Loading user data with token...');
                 const response = await fetch('/api/auth/me', {
                     method: 'GET',
-                    credentials: 'include',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                    },
                 });
                 
                 console.log('Auth response status:', response.status);
                 
                 if (!response.ok) {
                     console.log('Auth failed, redirecting to login');
+                    localStorage.removeItem('auth_token');
                     window.location.href = '/login.html';
                     return;
                 }
@@ -555,6 +583,7 @@
                 loadUserSlugs();
             } catch (error) {
                 console.error('Error loading user data:', error);
+                localStorage.removeItem('auth_token');
                 window.location.href = '/login.html';
             }
         }
@@ -562,7 +591,9 @@
         async function loadUserSlugs() {
             try {
                 const response = await fetch('/api/profile/my-slugs', {
-                    credentials: 'include',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                    },
                 });
                 const data = await response.json();
 
@@ -595,8 +626,8 @@
             try {
                 const response = await fetch('/api/profile/create-slug', {
                     method: 'POST',
-                    credentials: 'include',
                     headers: {
+                        'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -657,11 +688,15 @@
                 try {
                     await fetch('/api/auth/logout', {
                         method: 'POST',
-                        credentials: 'include',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                        },
                     });
+                    localStorage.removeItem('auth_token');
                     window.location.href = '/login.html';
                 } catch (error) {
                     console.error('Logout error:', error);
+                    localStorage.removeItem('auth_token');
                     window.location.href = '/login.html';
                 }
             }
@@ -669,6 +704,6 @@
 
         // Load user data when page loads
         window.addEventListener('load', loadUserData);
-    </script>
+</script>
 </body>
 </html>
