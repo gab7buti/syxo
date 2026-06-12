@@ -1,8 +1,22 @@
-export default function handler(req, res) {
+const mysql = require('mysql2/promise');
+
+// MySQL connection pool
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST || 'mysql.shardatabases.app',
+  user: process.env.MYSQL_USER || '633735d35b5240ce9e5a8de881e71808',
+  password: process.env.MYSQL_PASSWORD || 'snowf1isa',
+  database: process.env.MYSQL_DATABASE || 'database',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+
+export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let connection;
   try {
     // Get cookies
     const cookies = parseCookies(req.headers.cookie || '');
@@ -12,17 +26,29 @@ export default function handler(req, res) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    // Get database connection
+    connection = await pool.getConnection();
+
     // Get all slugs for this user
-    // In a real app, this would query a database
-    // For now, we'll return an empty array
-    const userSlugs = [];
+    const [slugs] = await connection.execute(
+      'SELECT slug, bio, background_url FROM slugs WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
+    );
 
     res.status(200).json({
-      slugs: userSlugs,
+      slugs: slugs.map(s => ({
+        slug: s.slug,
+        bio: s.bio,
+        backgroundUrl: s.background_url,
+      })),
     });
   } catch (error) {
     console.error('Get my slugs error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
 

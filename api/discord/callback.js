@@ -1,13 +1,21 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const mysql = require('mysql2/promise');
 
 const DISCORD_CLIENT_ID = '1514231972686200942';
 const DISCORD_CLIENT_SECRET = 'fPN8wxX2YVxekygoUPDySHzYPrSyEqO0';
 const REDIRECT_URI = 'https://syxo-gilt.vercel.app/api/discord/callback';
 
-// Simple in-memory storage
-const users = {};
-const sessions = {};
+// MySQL connection pool
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST || 'mysql.shardatabases.app',
+  user: process.env.MYSQL_USER || '633735d35b5240ce9e5a8de881e71808',
+  password: process.env.MYSQL_PASSWORD || 'snowf1isa',
+  database: process.env.MYSQL_DATABASE || 'database',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -20,6 +28,7 @@ export default async function handler(req, res) {
     return res.redirect(302, '/?error=no_code');
   }
 
+  let connection;
   try {
     console.log('Exchanging code for token...');
     
@@ -53,33 +62,51 @@ export default async function handler(req, res) {
 
     console.log('User authenticated:', userId);
 
-    // Store user
-    users[userId] = {
-      id: userId,
-      username: user.username,
-      avatar: user.avatar,
-      email: user.email,
-    };
+    // Get database connection
+    connection = await pool.getConnection();
+
+    // Check if user exists
+    const [existingUsers] = await connection.execute(
+      'SELECT * FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (existingUsers.length === 0) {
+      // Create new user
+      await connection.execute(
+        'INSERT INTO users (id, username, avatar, email) VALUES (?, ?, ?, ?)',
+        [userId, user.username, user.avatar, user.email]
+      );
+    } else {
+      // Update existing user
+      await connection.execute(
+        'UPDATE users SET username = ?, avatar = ?, email = ? WHERE id = ?',
+        [user.username, user.avatar, user.email, userId]
+      );
+    }
 
     // Create session
     const sessionId = crypto.randomBytes(16).toString('hex');
-    sessions[sessionId] = {
-      userId,
-      createdAt: Date.now(),
-    };
+    const expiresAt = new Date(Date.now() + 86400000); // 24 hours
+
+    await connection.execute(
+      'INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
+      [sessionId, userId, expiresAt]
+    );
 
     // Set cookies
     res.setHeader('Set-Cookie', [
-      `session_id=${sessionId}; HttpOnly; Max-Age=86400000; Path=/; SameSite=Lax`,
-      `user_id=${userId}; Max-Age=86400000; Path=/; SameSite=Lax`,
+      `session_id=${sessionId}; HttpOnly; Max-Age=86400000; Path=/; SameSite=Lax; Secure`,
+      `user_id=${userId}; Max-Age=86400000; Path=/; SameSite=Lax; Secure`,
     ]);
 
     res.redirect(302, '/dashboard');
   } catch (error) {
     console.error('OAuth error:', error.response?.data || error.message);
     res.redirect(302, '/?error=oauth_failed');
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
-
-// Export for use in other handlers
-export { users, sessions };

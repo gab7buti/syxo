@@ -1,12 +1,22 @@
-// Simple in-memory user storage (in production, use a database)
-const users = {};
-const sessions = {};
+const mysql = require('mysql2/promise');
 
-export default function handler(req, res) {
+// MySQL connection pool
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST || 'mysql.shardatabases.app',
+  user: process.env.MYSQL_USER || '633735d35b5240ce9e5a8de881e71808',
+  password: process.env.MYSQL_PASSWORD || 'snowf1isa',
+  database: process.env.MYSQL_DATABASE || 'database',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+
+export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let connection;
   try {
     // Get cookies
     const cookies = parseCookies(req.headers.cookie || '');
@@ -17,12 +27,30 @@ export default function handler(req, res) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    // Check if user exists
-    if (!users[userId]) {
+    // Get database connection
+    connection = await pool.getConnection();
+
+    // Check if session is valid
+    const [sessions] = await connection.execute(
+      'SELECT * FROM sessions WHERE id = ? AND user_id = ? AND expires_at > NOW()',
+      [sessionId, userId]
+    );
+
+    if (sessions.length === 0) {
+      return res.status(401).json({ error: 'Session expired or invalid' });
+    }
+
+    // Get user info
+    const [users] = await connection.execute(
+      'SELECT id, username, avatar, email FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    const user = users[userId];
+    const user = users[0];
     res.status(200).json({
       id: user.id,
       username: user.username,
@@ -32,6 +60,10 @@ export default function handler(req, res) {
   } catch (error) {
     console.error('Auth check error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
 
@@ -48,6 +80,3 @@ function parseCookies(cookieString) {
   
   return cookies;
 }
-
-// Export for use in other handlers
-export { users, sessions };
