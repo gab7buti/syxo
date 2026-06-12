@@ -876,11 +876,21 @@
         // Check authentication on page load
         async function checkAuth() {
             try {
-                const response = await fetch('/api/auth/me');
+                console.log('Checking auth...');
+                const response = await fetch('/api/auth/me', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                console.log('Auth response status:', response.status);
                 if (response.ok) {
                     const user = await response.json();
+                    console.log('User authenticated:', user);
                     showDashboard(user);
                 } else {
+                    console.log('Auth failed, showing login');
                     showLogin();
                 }
             } catch (error) {
@@ -909,7 +919,9 @@
         // Login button
         document.getElementById('loginBtn').addEventListener('click', async () => {
             try {
-                const response = await fetch('/api/discord/login');
+                const response = await fetch('/api/discord/login', {
+                    credentials: 'include',
+                });
                 const data = await response.json();
                 if (data.authUrl) {
                     window.location.href = data.authUrl;
@@ -973,6 +985,7 @@
             try {
                 const response = await fetch('/api/profile/create-slug', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -1000,7 +1013,9 @@
 
         async function loadUserSlugs() {
             try {
-                const response = await fetch('/api/profile/my-slugs');
+                const response = await fetch('/api/profile/my-slugs', {
+                    credentials: 'include',
+                });
                 const data = await response.json();
 
                 const slugsListContent = document.getElementById('slugsListContent');
@@ -1019,9 +1034,23 @@
             }
         }
 
-        function logout() {
+        async function logout() {
             if (confirm('Tem certeza que deseja sair?')) {
-                window.location.href = '/api/discord/logout';
+                try {
+                    const response = await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    if (response.ok) {
+                        window.location.href = '/';
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    window.location.href = '/';
+                }
             }
         }
 
