@@ -1,0 +1,14 @@
+{
+  "name": "syxo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "express-session": "^1.17.3"
+  }
+}
