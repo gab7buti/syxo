@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syxo - Discord Profile Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .sakura {
+            position: fixed;
+            pointer-events: none;
+        }
+
+        .login-container {
+            text-align: center;
+            z-index: 10;
+            max-width: 600px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #b0b0b0;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .feature-icon {
+            font-size: 20px;
+        }
+
+        .feature-text {
+            font-size: 14px;
+            color: #d0d0d0;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="card">
+            <div class="logo">✨</div>
+            <h1>Syxo</h1>
+            <p class="subtitle">Showcase seu perfil Discord com estilo. Crie uma página única e compartilhe com o mundo.</p>
+            
+            <button class="login-btn" id="loginBtn">
+                🔗 Entrar com Discord
+            </button>
+
+            <div class="features">
+                <div class="feature">
+                    <span class="feature-icon">🎨</span>
+                    <span class="feature-text">Customize seu perfil</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🔗</span>
+                    <span class="feature-text">Crie múltiplos slugs</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">✨</span>
+                    <span class="feature-text">Compartilhe com estilo</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Create sakura particles
+        function createSakura() {
+            const sakura = document.createElement('div');
+            sakura.className = 'sakura';
+            sakura.innerHTML = '🌸';
+            sakura.style.left = Math.random() * 100 + '%';
+            sakura.style.top = '-10px';
+            sakura.style.fontSize = (Math.random() * 20 + 10) + 'px';
+            sakura.style.opacity = Math.random() * 0.5 + 0.5;
+            sakura.style.animation = `fall ${Math.random() * 3 + 2}s linear`;
+            document.body.appendChild(sakura);
+            setTimeout(() => sakura.remove(), 5000);
+        }
+
+        setInterval(createSakura, 300);
+
+        // Login button
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            try {
+                console.log('Login button clicked');
+                const response = await fetch('/api/discord/login', {
+                    credentials: 'include',
+                });
+                const data = await response.json();
+                console.log('Login response:', data);
+                if (data.authUrl) {
+                    window.location.href = data.authUrl;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Erro ao fazer login');
+            }
+        });
+    </script>
+</body>
+</html>

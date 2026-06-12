@@ -16,12 +16,20 @@
       "dest": "/api/$1.js"
     },
     {
+      "src": "/dashboard",
+      "dest": "/public/dashboard-simple.html"
+    },
+    {
+      "src": "/login",
+      "dest": "/public/login.html"
+    },
+    {
       "src": "/public/(.*)",
       "dest": "/public/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/index.html"
+      "dest": "/public/login.html"
     }
   ]
 }
