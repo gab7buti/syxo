@@ -1,10 +1,12 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import mysql from 'mysql2/promise';
+import jwt from 'jsonwebtoken';
 
 const DISCORD_CLIENT_ID = '1514231972686200942';
 const DISCORD_CLIENT_SECRET = 'fPN8wxX2YVxekygoUPDySHzYPrSyEqO0';
 const REDIRECT_URI = 'https://syxo-gilt.vercel.app/api/discord/callback';
+const JWT_SECRET = 'your-secret-key-change-this';
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -87,22 +89,20 @@ export default async function handler(req, res) {
       );
     }
 
-    // Create session
-    const sessionId = crypto.randomBytes(16).toString('hex');
-    const expiresAt = new Date(Date.now() + 86400000); // 24 hours
-
-    await connection.execute(
-      'INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
-      [sessionId, userId, expiresAt]
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: userId,
+        username: user.username,
+        avatar: user.avatar,
+        email: user.email,
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
-    // Set cookies
-    res.setHeader('Set-Cookie', [
-      `session_id=${sessionId}; HttpOnly; Max-Age=86400000; Path=/; SameSite=Lax; Secure`,
-      `user_id=${userId}; Max-Age=86400000; Path=/; SameSite=Lax; Secure`,
-    ]);
-
-    res.redirect(302, '/dashboard');
+    // Redirect to dashboard with token
+    res.redirect(302, `/dashboard?token=${encodeURIComponent(token)}`);
   } catch (error) {
     console.error('OAuth error:', error.response?.data || error.message);
     res.redirect(302, '/?error=oauth_failed');
