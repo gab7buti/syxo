@@ -10,6 +10,15 @@ const app = express();
 const users = {};
 const profiles = {};
 
+// Get the correct redirect URI
+const getRedirectUri = () => {
+  // Use environment variable if available, otherwise use the Vercel URL
+  if (process.env.DISCORD_REDIRECT_URI) {
+    return process.env.DISCORD_REDIRECT_URI;
+  }
+  return 'https://syxo-p6tdfc27w-gh25166-8004s-projects.vercel.app/api/discord/callback';
+};
+
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -23,10 +32,12 @@ app.use(session({
 // Discord OAuth endpoints
 app.get('/api/discord/login', (req, res) => {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  const redirectUri = `${req.protocol}://${req.get('host')}/api/discord/callback`;
+  const redirectUri = getRedirectUri();
   const scope = 'identify email';
   
-  console.log(`🔐 Login initiated. Client ID: ${clientId}, Redirect URI: ${redirectUri}`);
+  console.log(`🔐 Login initiated`);
+  console.log(`Client ID: ${clientId}`);
+  console.log(`Redirect URI: ${redirectUri}`);
   
   const authUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}`;
   res.redirect(authUrl);
@@ -47,14 +58,12 @@ app.get('/api/discord/callback', async (req, res) => {
 
   try {
     console.log('🔄 Callback received. Exchanging code for token...');
-    console.log(`Code: ${code.substring(0, 20)}...`);
     
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/discord/callback`;
+    const redirectUri = getRedirectUri();
     const clientId = process.env.DISCORD_CLIENT_ID;
     const clientSecret = process.env.DISCORD_CLIENT_SECRET;
     
     console.log(`Client ID: ${clientId}`);
-    console.log(`Client Secret: ${clientSecret ? '***' : 'MISSING'}`);
     console.log(`Redirect URI: ${redirectUri}`);
     
     if (!clientId || !clientSecret) {
@@ -62,15 +71,16 @@ app.get('/api/discord/callback', async (req, res) => {
     }
     
     // Exchange code for token
+    console.log('📤 Sending token request to Discord...');
     const tokenResponse = await axios.post(
       'https://discord.com/api/oauth2/token',
-      {
+      new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri
-      },
+      }).toString(),
       {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       }
@@ -176,7 +186,5 @@ app.get('/api/auth/me', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}/`);
-  console.log(`Discord Client ID: ${process.env.DISCORD_CLIENT_ID}`);
-  console.log(`Discord Client Secret: ${process.env.DISCORD_CLIENT_SECRET ? '***' : 'MISSING'}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
