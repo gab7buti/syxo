@@ -71,8 +71,8 @@ async function createSlug(req, res) {
     } else {
       // Create new slug
       await connection.execute(
-        'INSERT INTO slugs (user_id, slug, bio, background_url) VALUES (?, ?, ?, ?)',
-        [userId, slug, bio || '', backgroundUrl || '']
+        'INSERT INTO slugs (user_id, slug, bio, background_url, view_count) VALUES (?, ?, ?, ?, ?)',
+        [userId, slug, bio || '', backgroundUrl || '', 0]
       );
     }
 
@@ -121,6 +121,7 @@ async function getSlug(req, res) {
       slug: slugData.slug,
       bio: slugData.bio,
       backgroundUrl: slugData.background_url,
+      viewCount: slugData.view_count || 0,
       user: {
         id: slugData.user_id,
         username: slugData.username,
