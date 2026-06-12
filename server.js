@@ -78,7 +78,7 @@ app.use(session({
 // Discord OAuth endpoints
 app.get('/api/discord/login', (req, res) => {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  const redirectUri = process.env.DISCORD_REDIRECT_URI;
+  const redirectUri = 'https://syxo-720vc50ub-gh25166-8004s-projects.vercel.app/api/discord/callback';
   const scope = 'identify email';
   
   const authUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}`;
@@ -99,7 +99,7 @@ app.get('/api/discord/callback', async (req, res) => {
       client_secret: process.env.DISCORD_CLIENT_SECRET,
       grant_type: 'authorization_code',
       code,
-      redirect_uri: process.env.DISCORD_REDIRECT_URI
+      redirect_uri: 'https://syxo-720vc50ub-gh25166-8004s-projects.vercel.app/api/discord/callback'
     });
 
     const { access_token } = tokenResponse.data;
