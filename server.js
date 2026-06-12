@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const app = express();
 
-// In-memory storage for testing
+// In-memory storage
 const users = {};
 const profiles = {};
 
@@ -23,51 +23,70 @@ app.use(session({
 // Discord OAuth endpoints
 app.get('/api/discord/login', (req, res) => {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  // Use the request origin to build the redirect URI
   const redirectUri = `${req.protocol}://${req.get('host')}/api/discord/callback`;
   const scope = 'identify email';
   
-  console.log(`🔐 Login initiated. Redirect URI: ${redirectUri}`);
+  console.log(`🔐 Login initiated. Client ID: ${clientId}, Redirect URI: ${redirectUri}`);
   
   const authUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}`;
   res.redirect(authUrl);
 });
 
 app.get('/api/discord/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, error } = req.query;
+  
+  if (error) {
+    console.error(`❌ Discord OAuth error: ${error}`);
+    return res.redirect('/?error=discord_denied');
+  }
   
   if (!code) {
+    console.error('❌ No code received from Discord');
     return res.redirect('/?error=no_code');
   }
 
   try {
-    console.log('🔄 Exchanging code for token...');
+    console.log('🔄 Callback received. Exchanging code for token...');
+    console.log(`Code: ${code.substring(0, 20)}...`);
     
-    // Use the request origin to build the redirect URI
     const redirectUri = `${req.protocol}://${req.get('host')}/api/discord/callback`;
+    const clientId = process.env.DISCORD_CLIENT_ID;
+    const clientSecret = process.env.DISCORD_CLIENT_SECRET;
+    
+    console.log(`Client ID: ${clientId}`);
+    console.log(`Client Secret: ${clientSecret ? '***' : 'MISSING'}`);
+    console.log(`Redirect URI: ${redirectUri}`);
+    
+    if (!clientId || !clientSecret) {
+      throw new Error('Missing Discord credentials in environment variables');
+    }
     
     // Exchange code for token
-    const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', {
-      client_id: process.env.DISCORD_CLIENT_ID,
-      client_secret: process.env.DISCORD_CLIENT_SECRET,
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: redirectUri
-    }, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
+    const tokenResponse = await axios.post(
+      'https://discord.com/api/oauth2/token',
+      {
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri
+      },
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
 
-    console.log('✅ Token received');
+    console.log('✅ Token received from Discord');
     const { access_token } = tokenResponse.data;
 
     // Get user info
-    console.log('🔄 Fetching user info...');
+    console.log('🔄 Fetching user info from Discord...');
     const userResponse = await axios.get('https://discord.com/api/users/@me', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
     const { id, username, avatar, email } = userResponse.data;
-    console.log(`✅ User fetched: ${username}`);
+    console.log(`✅ User fetched: ${username} (${id})`);
 
     // Save user in memory
     users[id] = {
@@ -83,7 +102,12 @@ app.get('/api/discord/callback', async (req, res) => {
 
     res.redirect('/dashboard');
   } catch (error) {
-    console.error('❌ OAuth error:', error.response?.data || error.message);
+    console.error('❌ OAuth error:');
+    console.error(`Error message: ${error.message}`);
+    if (error.response) {
+      console.error(`Status: ${error.response.status}`);
+      console.error(`Data: ${JSON.stringify(error.response.data)}`);
+    }
     res.redirect('/?error=oauth_failed');
   }
 });
@@ -153,4 +177,6 @@ app.get('/api/auth/me', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}/`);
+  console.log(`Discord Client ID: ${process.env.DISCORD_CLIENT_ID}`);
+  console.log(`Discord Client Secret: ${process.env.DISCORD_CLIENT_SECRET ? '***' : 'MISSING'}`);
 });
