@@ -1,4 +1,4 @@
-const mysql = require('mysql2/promise');
+import mysql from 'mysql2/promise';
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -9,6 +9,8 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelayMs: 0,
 });
 
 export default async function handler(req, res) {
@@ -22,6 +24,8 @@ export default async function handler(req, res) {
     const cookies = parseCookies(req.headers.cookie || '');
     const userId = cookies.user_id;
     const sessionId = cookies.session_id;
+
+    console.log('Auth check - userId:', userId, 'sessionId:', sessionId);
 
     if (!userId || !sessionId) {
       return res.status(401).json({ error: 'Not authenticated' });
@@ -37,6 +41,7 @@ export default async function handler(req, res) {
     );
 
     if (sessions.length === 0) {
+      console.log('Session not found or expired');
       return res.status(401).json({ error: 'Session expired or invalid' });
     }
 
@@ -47,6 +52,7 @@ export default async function handler(req, res) {
     );
 
     if (users.length === 0) {
+      console.log('User not found');
       return res.status(401).json({ error: 'User not found' });
     }
 
@@ -58,8 +64,8 @@ export default async function handler(req, res) {
       email: user.email,
     });
   } catch (error) {
-    console.error('Auth check error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Auth check error:', error.message, error.code);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   } finally {
     if (connection) {
       connection.release();

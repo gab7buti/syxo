@@ -1,6 +1,6 @@
-const axios = require('axios');
-const crypto = require('crypto');
-const mysql = require('mysql2/promise');
+import axios from 'axios';
+import crypto from 'crypto';
+import mysql from 'mysql2/promise';
 
 const DISCORD_CLIENT_ID = '1514231972686200942';
 const DISCORD_CLIENT_SECRET = 'fPN8wxX2YVxekygoUPDySHzYPrSyEqO0';
@@ -15,6 +15,8 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelayMs: 0,
 });
 
 export default async function handler(req, res) {
