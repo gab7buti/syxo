@@ -7,6 +7,7 @@ const REDIRECT_URI = 'https://syxo-gilt.vercel.app/api/discord/callback';
 
 // Simple in-memory storage
 const users = {};
+const sessions = {};
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -62,9 +63,15 @@ export default async function handler(req, res) {
 
     // Create session
     const sessionId = crypto.randomBytes(16).toString('hex');
+    sessions[sessionId] = {
+      userId,
+      createdAt: Date.now(),
+    };
+
+    // Set cookies
     res.setHeader('Set-Cookie', [
-      `session_id=${sessionId}; HttpOnly; Max-Age=86400000; Path=/`,
-      `user_id=${userId}; Max-Age=86400000; Path=/`,
+      `session_id=${sessionId}; HttpOnly; Max-Age=86400000; Path=/; SameSite=Lax`,
+      `user_id=${userId}; Max-Age=86400000; Path=/; SameSite=Lax`,
     ]);
 
     res.redirect(302, '/dashboard');
@@ -73,3 +80,6 @@ export default async function handler(req, res) {
     res.redirect(302, '/?error=oauth_failed');
   }
 }
+
+// Export for use in other handlers
+export { users, sessions };
