@@ -22,6 +22,8 @@ export default async (req, res) => {
     }
 
     try {
+        console.log('Discord callback called with code:', code);
+        
         // Exchange code for token
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
@@ -36,6 +38,13 @@ export default async (req, res) => {
         });
 
         const tokenData = await tokenResponse.json();
+        console.log('Token response:', tokenData);
+        
+        if (!tokenData.access_token) {
+            console.error('No access token in response');
+            return res.status(400).json({ error: 'Failed to get access token' });
+        }
+        
         const accessToken = tokenData.access_token;
 
         // Get user info
@@ -44,6 +53,7 @@ export default async (req, res) => {
         });
 
         const discordUser = await userResponse.json();
+        console.log('Discord user:', discordUser);
 
         // Save to MySQL
         const connection = await pool.getConnection();
@@ -80,12 +90,13 @@ export default async (req, res) => {
                 username: discordUser.username
             })).toString('base64');
 
+            console.log('Redirecting to dashboard with token');
             res.redirect(`/dashboard?token=${token}`);
         } finally {
             connection.release();
         }
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Discord callback error:', error);
+        res.status(500).json({ error: error.message });
     }
 };
