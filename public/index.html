@@ -541,6 +541,36 @@
             }
         }
 
+        /* Footer */
+        .footer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer:hover {
+            background: rgba(0, 0, 0, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .footer-icon {
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 150px;
@@ -557,6 +587,13 @@
 
             .quick-access-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .footer {
+                bottom: 10px;
+                right: 10px;
+                font-size: 11px;
+                padding: 6px 12px;
             }
         }
     </style>
@@ -716,6 +753,12 @@
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <a href="https://syxo.lol" target="_blank" class="footer">
+        <span class="footer-icon">✨</span>
+        <span>made with syxo</span>
+    </a>
 
     <!-- Modals -->
     <div class="modal" id="perfilModal">
