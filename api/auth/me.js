@@ -1,7 +1,4 @@
 import mysql from 'mysql2/promise';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = 'your-secret-key-change-this';
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -23,28 +20,31 @@ export default async function handler(req, res) {
 
   let connection;
   try {
-    // Get token from Authorization header or localStorage (passed in body)
-    const authHeader = req.headers.authorization;
-    let token = null;
+    // Get cookies
+    const cookies = parseCookies(req.headers.cookie || '');
+    const userId = cookies.user_id;
+    const sessionId = cookies.session_id;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
+    console.log('Auth check - userId:', userId, 'sessionId:', sessionId, 'cookies:', req.headers.cookie);
 
-    console.log('Auth check - token:', token ? 'present' : 'missing');
-
-    if (!token) {
+    if (!userId || !sessionId) {
+      console.log('Missing userId or sessionId');
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
-
-    console.log('Token verified for user:', userId);
-
     // Get database connection
     connection = await pool.getConnection();
+
+    // Check if session is valid
+    const [sessions] = await connection.execute(
+      'SELECT * FROM sessions WHERE id = ? AND user_id = ? AND expires_at > NOW()',
+      [sessionId, userId]
+    );
+
+    if (sessions.length === 0) {
+      console.log('Session not found or expired');
+      return res.status(401).json({ error: 'Session expired or invalid' });
+    }
 
     // Get user info
     const [users] = await connection.execute(
@@ -58,6 +58,8 @@ export default async function handler(req, res) {
     }
 
     const user = users[0];
+    console.log('User authenticated:', user.username);
+    
     res.status(200).json({
       id: user.id,
       username: user.username,
@@ -65,11 +67,25 @@ export default async function handler(req, res) {
       email: user.email,
     });
   } catch (error) {
-    console.error('Auth check error:', error.message);
-    res.status(401).json({ error: 'Invalid or expired token' });
+    console.error('Auth check error:', error.message, error.code);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   } finally {
     if (connection) {
       connection.release();
     }
   }
+}
+
+function parseCookies(cookieString) {
+  const cookies = {};
+  if (!cookieString) return cookies;
+  
+  cookieString.split(';').forEach(cookie => {
+    const [name, value] = cookie.trim().split('=');
+    if (name && value) {
+      cookies[name] = decodeURIComponent(value);
+    }
+  });
+  
+  return cookies;
 }

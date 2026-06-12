@@ -1,12 +1,10 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import mysql from 'mysql2/promise';
-import jwt from 'jsonwebtoken';
 
 const DISCORD_CLIENT_ID = '1514231972686200942';
 const DISCORD_CLIENT_SECRET = 'fPN8wxX2YVxekygoUPDySHzYPrSyEqO0';
 const REDIRECT_URI = 'https://syxo-gilt.vercel.app/api/discord/callback';
-const JWT_SECRET = 'your-secret-key-change-this';
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -29,6 +27,7 @@ export default async function handler(req, res) {
   const { code } = req.query;
 
   if (!code) {
+    console.log('No code provided');
     return res.redirect(302, '/?error=no_code');
   }
 
@@ -77,32 +76,42 @@ export default async function handler(req, res) {
 
     if (existingUsers.length === 0) {
       // Create new user
+      console.log('Creating new user:', userId);
       await connection.execute(
         'INSERT INTO users (id, username, avatar, email) VALUES (?, ?, ?, ?)',
         [userId, user.username, user.avatar, user.email]
       );
     } else {
       // Update existing user
+      console.log('Updating existing user:', userId);
       await connection.execute(
         'UPDATE users SET username = ?, avatar = ?, email = ? WHERE id = ?',
         [user.username, user.avatar, user.email, userId]
       );
     }
 
-    // Create JWT token
-    const token = jwt.sign(
-      {
-        userId: userId,
-        username: user.username,
-        avatar: user.avatar,
-        email: user.email,
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
+    // Create session
+    const sessionId = crypto.randomBytes(16).toString('hex');
+    const expiresAt = new Date(Date.now() + 86400000); // 24 hours
+
+    console.log('Creating session:', sessionId);
+    await connection.execute(
+      'INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
+      [sessionId, userId, expiresAt]
     );
 
-    // Redirect to dashboard with token
-    res.redirect(302, `/dashboard?token=${encodeURIComponent(token)}`);
+    // Set cookies with proper flags for Vercel
+    const cookieOptions = [
+      `session_id=${sessionId}; HttpOnly; Max-Age=86400; Path=/; SameSite=Lax`,
+      `user_id=${userId}; Max-Age=86400; Path=/; SameSite=Lax`,
+    ];
+
+    console.log('Setting cookies:', cookieOptions);
+    res.setHeader('Set-Cookie', cookieOptions);
+
+    // Redirect to dashboard
+    console.log('Redirecting to dashboard');
+    res.redirect(302, '/dashboard');
   } catch (error) {
     console.error('OAuth error:', error.response?.data || error.message);
     res.redirect(302, '/?error=oauth_failed');
